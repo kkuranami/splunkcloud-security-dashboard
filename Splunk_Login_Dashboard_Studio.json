@@ -1,0 +1,506 @@
+{
+  "dataSources": {
+    "ds_7EzyHmsu": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=_audit user=$token_user$\n| table user timestamp action info action object",
+        "queryParameters": {
+          "earliest": "$tr_YBoDcrQx.earliest$",
+          "latest": "$tr_YBoDcrQx.latest$"
+        }
+      },
+      "name": "Table search-h"
+    },
+    "ds_i9GluUpT": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"_audit\" action=\"login attempt*\" NOT user=internal*\r\n| iplocation clientip\r\n| geostats count by user",
+        "queryParameters": {
+          "earliest": "-7d@h",
+          "latest": "now"
+        }
+      },
+      "name": "Cluster map search-g"
+    },
+    "ds_TurMe7D8": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=_audit action=\"login attempt\" info=\"succeeded\"\n| top limit=2 _time by user\n| stats list(_time) as login_times by user\n| eval latest_login = mvindex(login_times, 0)\n| eval previous_login = mvindex(login_times, 1)\n| eval latest_login_diff = latest_login - previous_login\n| eval latest_login = strftime(latest_login, \"%Y-%m-%d %H:%M:%S\")\n| eval previous_login = strftime(previous_login, \"%Y-%m-%d %H:%M:%S\")\n| where !isnull(previous_login) AND latest_login_diff > 30*24*60*60\n| table user, latest_login, previous_login",
+        "queryParameters": {
+          "earliest": "$tr_YBoDcrQx.earliest$",
+          "latest": "$tr_YBoDcrQx.latest$"
+        }
+      },
+      "name": "Table search-f"
+    },
+    "ds_zOBr2x3Q": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"_audit\" action=\"login attempt locked out user\"\n| table _time, user src",
+        "queryParameters": {
+          "earliest": "$tr_YBoDcrQx.earliest$",
+          "latest": "$tr_YBoDcrQx.latest$"
+        }
+      },
+      "name": "Table search-e"
+    },
+    "ds_1RDbrI3H": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"_audit\" action=\"login attempt*\" NOT user=internal*\r\n| eval date=strftime(_time, \"%Y-%m-%d\") \r\n| eval result=if(info=\"succeeded\", \"succeeded\", \"failed\") \r\n| timechart count by result",
+        "queryParameters": {
+          "earliest": "$tr_YBoDcrQx.earliest$",
+          "latest": "$tr_YBoDcrQx.latest$"
+        }
+      },
+      "name": "Area chart search-c"
+    },
+    "ds_xWmJxSBR": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"_audit\" action=\"login attempt*\"\r\n| eval result=if(info=\"succeeded\", \"succeeded\", \"failed\")\r\n| stats count(eval(result=\"failed\")) as failures, count(eval(result=\"succeeded\")) as successes by user \r\n| eval total_attempts = successes + failures\r\n| eval failure_rate = round(failures * 100 / total_attempts, 2)\r\n| sort - failure_rate\r\n| table user, total_attempts, failure_rate",
+        "queryParameters": {
+          "earliest": "$tr_YBoDcrQx.earliest$",
+          "latest": "$tr_YBoDcrQx.latest$"
+        }
+      },
+      "name": "Table search-d"
+    },
+    "ds_HUovDL28": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"_audit\" action=\"login attempt*\"  NOT user=internal*\n| eval result=if(info=\"succeeded\", \"succeeded\", \"failed\") \n| stats count(eval(result=\"failed\")) as failures, count(eval(result=\"succeeded\")) as successes\n| eval login_success_rate = round((successes / (successes + failures)) * 100, 2)\n| table login_success_rate",
+        "queryParameters": {
+          "earliest": "$global_time1.earliest$",
+          "latest": "$global_time1.latest$"
+        }
+      },
+      "name": "Single value search-b"
+    },
+    "ds_rdAqApPC": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"_audit\" action=\"login attempt*\" NOT user=internal*\n| stats count",
+        "queryParameters": {
+          "earliest": "$global_time1.earliest$",
+          "latest": "$global_time1.latest$"
+        }
+      },
+      "name": "Single value search-a"
+    }
+  },
+  "visualizations": {
+    "viz_KhKQ1Mu3": {
+      "type": "splunk.table",
+      "options": {
+        "count": 20,
+        "dataOverlayMode": "none",
+        "drilldown": "none",
+        "showRowNumbers": false,
+        "showInternalFields": false
+      },
+      "dataSources": {
+        "primary": "ds_7EzyHmsu"
+      },
+      "title": "(h)特定ユーザーに対する関連イベントサーチ",
+      "description": ""
+    },
+    "viz_t2qCm5uC": {
+      "type": "splunk.map",
+      "options": {
+        "center": [
+          -1.9684735109351408,
+          162.57007465550964
+        ],
+        "zoom": 1,
+        "showBaseLayer": true,
+        "layers": [
+          {
+            "type": "bubble",
+            "latitude": "> primary | seriesByName('latitude')",
+            "longitude": "> primary | seriesByName('longitude')",
+            "bubbleSize": "> primary | frameWithoutSeriesNames('_geo_bounds_east', '_geo_bounds_west', '_geo_bounds_north', '_geo_bounds_south', 'latitude', 'longitude') | frameBySeriesTypes('number')",
+            "seriesColors": [
+              "#7b56db",
+              "#cb2196",
+              "#008c80",
+              "#9d6300",
+              "#f6540b",
+              "#ff969e",
+              "#99b100",
+              "#f4b649",
+              "#ae8cff",
+              "#8cbcff",
+              "#813193",
+              "#0051b5",
+              "#009ceb",
+              "#00cdaf",
+              "#00490a",
+              "#dd9900",
+              "#465d00",
+              "#ff677b",
+              "#ff6ace",
+              "#00689d"
+            ]
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_i9GluUpT"
+      },
+      "title": "(g)ログインを試行したユーザーの物理的アクセス元",
+      "description": "アクセス元ipアドレスを元にした物理アクセス元"
+    },
+    "viz_xdIY9vjn": {
+      "type": "splunk.table",
+      "options": {
+        "count": 20,
+        "dataOverlayMode": "none",
+        "drilldown": "none",
+        "showRowNumbers": false,
+        "showInternalFields": false
+      },
+      "dataSources": {
+        "primary": "ds_TurMe7D8"
+      },
+      "title": "(f)30日以上、ログインしていないユーザーのログイン"
+    },
+    "viz_GaxQWrtw": {
+      "type": "splunk.table",
+      "options": {
+        "count": 20,
+        "dataOverlayMode": "none",
+        "drilldown": "none",
+        "showRowNumbers": false,
+        "showInternalFields": false,
+        "columnFormat": {
+          "_time": {
+            "width": 169
+          }
+        }
+      },
+      "dataSources": {
+        "primary": "ds_zOBr2x3Q"
+      },
+      "title": "(e)ロックアウトされたユーザーによるログイン"
+    },
+    "viz_1od42Zp9": {
+      "type": "splunk.area",
+      "options": {
+        "yAxisAbbreviation": "auto",
+        "y2AxisAbbreviation": "auto",
+        "showRoundedY2AxisLabels": false,
+        "legendTruncation": "ellipsisMiddle",
+        "showY2MajorGridLines": true,
+        "xAxisLabelRotation": 0,
+        "xAxisTitleVisibility": "show",
+        "yAxisTitleVisibility": "show",
+        "y2AxisTitleVisibility": "show",
+        "yAxisScale": "linear",
+        "showOverlayY2Axis": false,
+        "nullValueDisplay": "gaps",
+        "dataValuesDisplay": "off",
+        "stackMode": "stacked",
+        "showSplitSeries": false,
+        "showIndependentYRanges": false,
+        "legendMode": "standard",
+        "legendDisplay": "right"
+      },
+      "dataSources": {
+        "primary": "ds_1RDbrI3H"
+      },
+      "title": "(c)ログイン試行イベントの時系列表示"
+    },
+    "viz_Q4VcrYeb": {
+      "type": "splunk.table",
+      "options": {
+        "count": 20,
+        "dataOverlayMode": "none",
+        "drilldown": "none",
+        "showRowNumbers": false,
+        "showInternalFields": false
+      },
+      "dataSources": {
+        "primary": "ds_xWmJxSBR"
+      },
+      "title": "(d)ログイン失敗率の高いユーザー",
+      "description": ""
+    },
+    "viz_FkBdRY3f": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "numberPrecision": 0,
+        "sparklineDisplay": "below",
+        "trendDisplay": "absolute",
+        "unitPosition": "after",
+        "shouldUseThousandSeparators": true,
+        "unit": "%",
+        "trendColor": "> trendValue | rangeValue(trendColorEditorConfig)"
+      },
+      "context": {
+        "convertedColorRange": [
+          {
+            "from": 100,
+            "value": "#dc4e41"
+          },
+          {
+            "from": 70,
+            "to": 100,
+            "value": "#f1813f"
+          },
+          {
+            "from": 30,
+            "to": 70,
+            "value": "#f8be34"
+          },
+          {
+            "from": 0,
+            "to": 30,
+            "value": "#0877a6"
+          },
+          {
+            "to": 0,
+            "value": "#53a051"
+          }
+        ],
+        "trendColorEditorConfig": [
+          {
+            "to": 0,
+            "value": "#9E2520"
+          },
+          {
+            "from": 0,
+            "value": "#1C6B2D"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_HUovDL28"
+      },
+      "title": "(b)ログイン成功率",
+      "description": ""
+    },
+    "viz_AYGjOsZ3": {
+      "type": "splunk.singlevalue",
+      "options": {
+        "numberPrecision": 0,
+        "sparklineDisplay": "below",
+        "trendDisplay": "absolute",
+        "unitPosition": "after",
+        "shouldUseThousandSeparators": true,
+        "trendColor": "> trendValue | rangeValue(trendColorEditorConfig)"
+      },
+      "context": {
+        "convertedColorRange": [
+          {
+            "from": 100,
+            "value": "#dc4e41"
+          },
+          {
+            "from": 70,
+            "to": 100,
+            "value": "#f1813f"
+          },
+          {
+            "from": 30,
+            "to": 70,
+            "value": "#f8be34"
+          },
+          {
+            "from": 0,
+            "to": 30,
+            "value": "#0877a6"
+          },
+          {
+            "to": 0,
+            "value": "#53a051"
+          }
+        ],
+        "trendColorEditorConfig": [
+          {
+            "to": 0,
+            "value": "#9E2520"
+          },
+          {
+            "from": 0,
+            "value": "#1C6B2D"
+          }
+        ]
+      },
+      "dataSources": {
+        "primary": "ds_rdAqApPC"
+      },
+      "title": "(a)ログイン試行回数",
+      "description": ""
+    }
+  },
+  "inputs": {
+    "input_global_trp": {
+      "type": "input.timerange",
+      "options": {
+        "token": "global_time1",
+        "defaultValue": "-24h@h,now"
+      },
+      "title": "(a)(b)時間範囲"
+    },
+    "input_rxqjtPkk": {
+      "options": {
+        "defaultValue": "-7d@h,now",
+        "token": "tr_YBoDcrQx"
+      },
+      "title": "(c)(d)(e)(f)(g)(h)時間範囲",
+      "type": "input.timerange"
+    },
+    "input_user": {
+      "options": {
+        "items": ">frame(label, value) | prepend(formattedStatics) | objects()",
+        "token": "token_user",
+        "defaultValue": "*"
+      },
+      "title": "(h)関連イベントをサーチするユーザー",
+      "type": "input.dropdown",
+      "dataSources": {
+        "primary": "ds_xWmJxSBR"
+      },
+      "context": {
+        "formattedConfig": {
+          "number": {
+            "prefix": ""
+          }
+        },
+        "formattedStatics": ">statics | formatByType(formattedConfig)",
+        "statics": [
+          [
+            "すべて"
+          ],
+          [
+            "*"
+          ]
+        ],
+        "label": ">primary | seriesByName(\"user\") | renameSeries(\"label\") | formatByType(formattedConfig)",
+        "value": ">primary | seriesByName(\"user\") | renameSeries(\"value\") | formatByType(formattedConfig)"
+      }
+    }
+  },
+  "layout": {
+    "options": {},
+    "globalInputs": [
+      "input_global_trp",
+      "input_rxqjtPkk",
+      "input_user"
+    ],
+    "tabs": {
+      "items": [
+        {
+          "layoutId": "layout_1",
+          "label": "New tab"
+        }
+      ]
+    },
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "grid",
+        "structure": [
+          {
+            "item": "viz_AYGjOsZ3",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 0,
+              "w": 719,
+              "h": 149
+            }
+          },
+          {
+            "item": "viz_1od42Zp9",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 149,
+              "w": 1000,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_GaxQWrtw",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 449,
+              "w": 719,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_t2qCm5uC",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 749,
+              "w": 1440,
+              "h": 481
+            }
+          },
+          {
+            "item": "viz_KhKQ1Mu3",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 1230,
+              "w": 1440,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_xdIY9vjn",
+            "type": "block",
+            "position": {
+              "x": 719,
+              "y": 449,
+              "w": 721,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_FkBdRY3f",
+            "type": "block",
+            "position": {
+              "x": 719,
+              "y": 0,
+              "w": 721,
+              "h": 149
+            }
+          },
+          {
+            "item": "viz_Q4VcrYeb",
+            "type": "block",
+            "position": {
+              "x": 1000,
+              "y": 149,
+              "w": 440,
+              "h": 300
+            }
+          }
+        ],
+        "options": {
+          "width": 1440,
+          "height": 960
+        }
+      }
+    }
+  },
+  "title": "Splunk Login Dashboard[Studio]",
+  "description": "Splunへのログイン状況を示すダッシュボードです",
+  "defaults": {
+    "dataSources": {
+      "ds.search": {
+        "options": {
+          "queryParameters": {
+            "latest": "$global_time.latest$",
+            "earliest": "$global_time.earliest$"
+          }
+        }
+      }
+    }
+  }
+}
